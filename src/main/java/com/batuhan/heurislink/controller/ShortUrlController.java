@@ -1,0 +1,57 @@
+package com.batuhan.heurislink.controller;
+
+import com.batuhan.heurislink.dto.CreateShortUrlRequest;
+import com.batuhan.heurislink.dto.CreateShortUrlResponse;
+import com.batuhan.heurislink.entity.ShortUrl;
+import com.batuhan.heurislink.service.ShortUrlService;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.net.URI;
+
+@RestController
+@RequiredArgsConstructor
+public class ShortUrlController {
+
+    private final ShortUrlService shortUrlService;
+
+    @PostMapping("/urls")
+    public ResponseEntity<CreateShortUrlResponse> createShortUrl(
+            @Valid @RequestBody CreateShortUrlRequest request
+    ) {
+        ShortUrl shortUrl =
+                shortUrlService.createShortUrl(request.originalUrl());
+
+        String fullShortUrl =
+                "http://localhost:8080/" + shortUrl.getShortCode();
+
+        CreateShortUrlResponse response =
+                new CreateShortUrlResponse(
+                        shortUrl.getId(),
+                        shortUrl.getOriginalUrl(),
+                        shortUrl.getShortCode(),
+                        fullShortUrl,
+                        shortUrl.getCreatedAt()
+                );
+
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(response);
+    }
+
+    @GetMapping("/{shortCode}")
+    public ResponseEntity<Void> redirect(
+            @PathVariable String shortCode
+    ) {
+        ShortUrl shortUrl =
+                shortUrlService.getByShortCode(shortCode);
+
+        return ResponseEntity
+                .status(HttpStatus.FOUND)
+                .location(URI.create(shortUrl.getOriginalUrl()))
+                .build();
+    }
+}
