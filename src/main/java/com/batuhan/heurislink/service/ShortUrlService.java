@@ -1,6 +1,7 @@
 package com.batuhan.heurislink.service;
 
 import com.batuhan.heurislink.entity.ShortUrl;
+import com.batuhan.heurislink.exception.ShortUrlNotFoundException;
 import com.batuhan.heurislink.repository.ShortUrlRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -40,7 +41,7 @@ public class ShortUrlService {
     public ShortUrl getByShortCode(String shortCode) {
         return shortUrlRepository.findByShortCode(shortCode)
                 .orElseThrow(() ->
-                        new RuntimeException("Short URL not found")
+                        new ShortUrlNotFoundException(shortCode)
                 );
     }
 
