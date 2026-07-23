@@ -17,7 +17,10 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@WebMvcTest(ShortUrlController.class)
+@WebMvcTest(
+        controllers = ShortUrlController.class,
+        properties = "app.base-url=http://localhost:8080"
+)
 @Import(GlobalExceptionHandler.class)
 class ShortUrlControllerTest {
 

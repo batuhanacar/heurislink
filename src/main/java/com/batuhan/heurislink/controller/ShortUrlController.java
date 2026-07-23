@@ -6,6 +6,7 @@ import com.batuhan.heurislink.entity.ShortUrl;
 import com.batuhan.heurislink.service.ShortUrlService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -18,6 +19,9 @@ public class ShortUrlController {
 
     private final ShortUrlService shortUrlService;
 
+    @Value("${app.base-url}")
+    private String baseUrl;
+
     @PostMapping("/urls")
     public ResponseEntity<CreateShortUrlResponse> createShortUrl(
             @Valid @RequestBody CreateShortUrlRequest request
@@ -26,7 +30,7 @@ public class ShortUrlController {
                 shortUrlService.createShortUrl(request.originalUrl());
 
         String fullShortUrl =
-                "http://localhost:8080/" + shortUrl.getShortCode();
+                baseUrl + "/" + shortUrl.getShortCode();
 
         CreateShortUrlResponse response =
                 new CreateShortUrlResponse(

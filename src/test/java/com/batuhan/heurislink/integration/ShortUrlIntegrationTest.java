@@ -1,8 +1,6 @@
 package com.batuhan.heurislink.integration;
 
 import com.batuhan.heurislink.repository.ShortUrlRepository;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,6 +12,8 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.json.JsonMapper;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -36,7 +36,7 @@ class ShortUrlIntegrationTest {
     private ShortUrlRepository shortUrlRepository;
 
     @Autowired
-    private ObjectMapper objectMapper;
+    private JsonMapper jsonMapper;
 
     @BeforeEach
     void setUp() {
@@ -64,7 +64,7 @@ class ShortUrlIntegrationTest {
                 .getResponse()
                 .getContentAsString();
 
-        JsonNode responseJson = objectMapper.readTree(responseBody);
+        JsonNode responseJson = jsonMapper.readTree(responseBody);
         String shortCode = responseJson.get("shortCode").asText();
 
         mockMvc.perform(get("/" + shortCode))
