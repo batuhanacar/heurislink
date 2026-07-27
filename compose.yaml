@@ -2,14 +2,53 @@ services:
   postgres:
     image: postgres:17
     container_name: heurislink-postgres
+
     environment:
       POSTGRES_DB: heurislink
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
+
     ports:
-      - "5432:5432"
+      - "5433:5432"
+
     volumes:
       - postgres-data:/var/lib/postgresql/data
 
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d heurislink"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+    networks:
+      - heurislink-network
+
+  heurislink:
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+    container_name: heurislink-app
+
+    ports:
+      - "8080:8080"
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/heurislink
+      DB_USERNAME: postgres
+      DB_PASSWORD: postgres
+      APP_BASE_URL: http://localhost:8080
+
+    networks:
+      - heurislink-network
+
 volumes:
   postgres-data:
+
+networks:
+  heurislink-network:
+    driver: bridge

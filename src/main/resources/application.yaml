@@ -3,9 +3,9 @@ spring:
     name: heurislink
 
   datasource:
-    url: jdbc:postgresql://localhost:5432/heurislink
-    username: postgres
-    password: postgres
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/heurislink}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:postgres}
 
   jpa:
     open-in-view: false
@@ -16,8 +16,17 @@ spring:
   flyway:
     enabled: true
 
+
 server:
   port: 8080
 
+
 app:
-  base-url: http://localhost:8080
+  base-url: ${APP_BASE_URL:http://localhost:8080}
+
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
