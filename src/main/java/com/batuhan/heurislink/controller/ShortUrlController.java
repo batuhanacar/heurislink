@@ -2,8 +2,10 @@ package com.batuhan.heurislink.controller;
 
 import com.batuhan.heurislink.dto.CreateShortUrlRequest;
 import com.batuhan.heurislink.dto.CreateShortUrlResponse;
+import com.batuhan.heurislink.dto.ShortUrlAnalyticsResponse;
 import com.batuhan.heurislink.entity.ShortUrl;
 import com.batuhan.heurislink.service.ShortUrlService;
+import com.batuhan.heurislink.service.UrlClickService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -18,6 +20,7 @@ import java.net.URI;
 public class ShortUrlController {
 
     private final ShortUrlService shortUrlService;
+    private final UrlClickService urlClickService;
 
     @Value("${app.base-url}")
     private String baseUrl;
@@ -53,9 +56,33 @@ public class ShortUrlController {
         ShortUrl shortUrl =
                 shortUrlService.getByShortCode(shortCode);
 
+        urlClickService.recordClick(shortUrl);
+
         return ResponseEntity
                 .status(HttpStatus.FOUND)
                 .location(URI.create(shortUrl.getOriginalUrl()))
                 .build();
+    }
+
+    @GetMapping("/urls/{shortCode}/analytics")
+    public ResponseEntity<ShortUrlAnalyticsResponse> getAnalytics(
+            @PathVariable String shortCode
+    ) {
+        ShortUrl shortUrl =
+                shortUrlService.getByShortCode(shortCode);
+
+        long clickCount =
+                urlClickService.getClickCount(shortUrl);
+
+        ShortUrlAnalyticsResponse response =
+                new ShortUrlAnalyticsResponse(
+                        shortUrl.getId(),
+                        shortUrl.getOriginalUrl(),
+                        shortUrl.getShortCode(),
+                        clickCount,
+                        shortUrl.getCreatedAt()
+                );
+
+        return ResponseEntity.ok(response);
     }
 }
