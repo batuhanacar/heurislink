@@ -1,6 +1,7 @@
 package com.batuhan.heurislink.service;
 
 import com.batuhan.heurislink.entity.ShortUrl;
+import com.batuhan.heurislink.exception.ShortUrlExpiredException;
 import com.batuhan.heurislink.exception.ShortUrlNotFoundException;
 import com.batuhan.heurislink.repository.ShortUrlRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -10,6 +11,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.LocalDateTime;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -66,16 +68,18 @@ class ShortUrlServiceTest {
 
     @Test
     void shouldReturnShortUrlWhenCodeExists() {
-        ShortUrl shortUrl =
-                new ShortUrl("https://www.google.com", "abc1234def");
+        ShortUrl shortUrl = new ShortUrl(
+                "https://example.com",
+                "abc123"
+        );
 
-        when(shortUrlRepository.findByShortCode("abc1234def"))
+        when(shortUrlRepository.findByShortCode("abc123"))
                 .thenReturn(Optional.of(shortUrl));
 
-        ShortUrl result = shortUrlService.getByShortCode("abc1234def");
+        ShortUrl result =
+                shortUrlService.getByShortCode("abc123");
 
         assertEquals(shortUrl, result);
-        assertEquals("https://www.google.com", result.getOriginalUrl());
     }
 
     @Test
@@ -91,6 +95,145 @@ class ShortUrlServiceTest {
         assertEquals(
                 "Short URL not found for code: unknown",
                 exception.getMessage()
+        );
+    }
+
+    @Test
+    void shouldThrowExceptionWhenShortUrlIsExpired() {
+        ShortUrl shortUrl = new ShortUrl(
+                "https://example.com",
+                "expired123",
+                LocalDateTime.now().minusDays(1)
+        );
+
+        when(shortUrlRepository.findByShortCode("expired123"))
+                .thenReturn(Optional.of(shortUrl));
+
+        assertThrows(
+                ShortUrlExpiredException.class,
+                () -> shortUrlService.getByShortCode("expired123")
+        );
+    }
+
+    @Test
+    void shouldReturnShortUrlWhenExpirationDateIsInFuture() {
+        ShortUrl shortUrl = new ShortUrl(
+                "https://example.com",
+                "future123",
+                LocalDateTime.now().plusDays(1)
+        );
+
+        when(shortUrlRepository.findByShortCode("future123"))
+                .thenReturn(Optional.of(shortUrl));
+
+        ShortUrl result =
+                shortUrlService.getByShortCode("future123");
+
+        assertEquals(shortUrl, result);
+    }
+
+    @Test
+    void shouldDeactivateShortUrl() {
+        ShortUrl shortUrl = new ShortUrl(
+                "https://example.com",
+                "abc123"
+        );
+
+        when(shortUrlRepository.findByShortCode("abc123"))
+                .thenReturn(Optional.of(shortUrl));
+
+        when(shortUrlRepository.save(shortUrl))
+                .thenReturn(shortUrl);
+
+        ShortUrl result =
+                shortUrlService.deactivateShortUrl("abc123");
+
+        assertFalse(result.isActive());
+
+        verify(shortUrlRepository).save(shortUrl);
+    }
+
+    @Test
+    void shouldActivateShortUrl() {
+        ShortUrl shortUrl = new ShortUrl(
+                "https://example.com",
+                "abc123"
+        );
+
+        shortUrl.deactivate();
+
+        when(shortUrlRepository.findByShortCode("abc123"))
+                .thenReturn(Optional.of(shortUrl));
+
+        when(shortUrlRepository.save(shortUrl))
+                .thenReturn(shortUrl);
+
+        ShortUrl result =
+                shortUrlService.activateShortUrl("abc123");
+
+        assertTrue(result.isActive());
+
+        verify(shortUrlRepository).save(shortUrl);
+    }
+
+    @Test
+    void shouldUpdateShortUrl() {
+        ShortUrl shortUrl = new ShortUrl(
+                "https://old-example.com",
+                "abc123"
+        );
+
+        LocalDateTime newExpiresAt =
+                LocalDateTime.now().plusDays(7);
+
+        when(shortUrlRepository.findByShortCode("abc123"))
+                .thenReturn(Optional.of(shortUrl));
+
+        when(shortUrlRepository.save(shortUrl))
+                .thenReturn(shortUrl);
+
+        ShortUrl result = shortUrlService.updateShortUrl(
+                "abc123",
+                "https://new-example.com",
+                newExpiresAt
+        );
+
+        assertEquals(
+                "https://new-example.com",
+                result.getOriginalUrl()
+        );
+
+        assertEquals(
+                newExpiresAt,
+                result.getExpiresAt()
+        );
+
+        verify(shortUrlRepository).save(shortUrl);
+    }
+
+    @Test
+    void shouldDeleteShortUrl() {
+        ShortUrl shortUrl = new ShortUrl(
+                "https://example.com",
+                "abc123"
+        );
+
+        when(shortUrlRepository.findByShortCode("abc123"))
+                .thenReturn(Optional.of(shortUrl));
+
+        shortUrlService.deleteShortUrl("abc123");
+
+        verify(shortUrlRepository).delete(shortUrl);
+    }
+
+    @Test
+    void shouldThrowExceptionWhenDeletingUnknownShortUrl() {
+        when(shortUrlRepository.findByShortCode("unknown"))
+                .thenReturn(Optional.empty());
+
+        assertThrows(
+                ShortUrlNotFoundException.class,
+                () -> shortUrlService.deleteShortUrl("unknown")
         );
     }
 }

@@ -1,9 +1,7 @@
 package com.batuhan.heurislink.controller;
 
 import com.batuhan.heurislink.entity.ShortUrl;
-import com.batuhan.heurislink.exception.GlobalExceptionHandler;
-import com.batuhan.heurislink.exception.RateLimitExceededException;
-import com.batuhan.heurislink.exception.ShortUrlNotFoundException;
+import com.batuhan.heurislink.exception.*;
 import com.batuhan.heurislink.messaging.UrlClickProducer;
 import com.batuhan.heurislink.service.RateLimitService;
 import com.batuhan.heurislink.service.ShortUrlService;
@@ -16,11 +14,14 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.time.LocalDateTime;
+
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(
@@ -52,8 +53,10 @@ class ShortUrlControllerTest {
                 "abc123"
         );
 
-        when(shortUrlService.createShortUrl("https://www.google.com"))
-                .thenReturn(shortUrl);
+        when(shortUrlService.createShortUrl(
+                eq("https://www.google.com"),
+                isNull()
+        )).thenReturn(shortUrl);
 
         mockMvc.perform(post("/urls")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -72,6 +75,60 @@ class ShortUrlControllerTest {
                         .value("abc123"))
                 .andExpect(jsonPath("$.shortUrl")
                         .value("http://localhost:8080/abc123"));
+    }
+
+    @Test
+    void shouldCreateShortUrlWithExpirationDate() throws Exception {
+        LocalDateTime expiresAt =
+                LocalDateTime.of(2030, 1, 1, 10, 0);
+
+        ShortUrl shortUrl = new ShortUrl(
+                "https://example.com",
+                "exp123",
+                expiresAt
+        );
+
+        when(shortUrlService.createShortUrl(
+                eq("https://example.com"),
+                eq(expiresAt)
+        )).thenReturn(shortUrl);
+
+        mockMvc.perform(post("/urls")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "originalUrl": "https://example.com",
+                                  "expiresAt": "2030-01-01T10:00:00"
+                                }
+                                """))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.originalUrl")
+                        .value("https://example.com"))
+                .andExpect(jsonPath("$.shortCode")
+                        .value("exp123"))
+                .andExpect(jsonPath("$.shortUrl")
+                        .value("http://localhost:8080/exp123"))
+                .andExpect(jsonPath("$.expiresAt")
+                        .value("2030-01-01T10:00:00"));
+    }
+
+    @Test
+    void shouldReturnBadRequestWhenExpirationDateIsInThePast()
+            throws Exception {
+
+        mockMvc.perform(post("/urls")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "originalUrl": "https://example.com",
+                                  "expiresAt": "2020-01-01T10:00:00"
+                                }
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.error").value("Bad Request"))
+                .andExpect(jsonPath("$.message")
+                        .value("Expiration date must be in the future"));
     }
 
     @Test
@@ -161,5 +218,111 @@ class ShortUrlControllerTest {
                         .value(
                                 "Rate limit exceeded. Please try again later."
                         ));
+    }
+
+    @Test
+    void shouldReturnGoneWhenShortUrlIsExpired() throws Exception {
+        when(shortUrlService.getByShortCode("expired123"))
+                .thenThrow(new ShortUrlExpiredException("expired123"));
+
+        mockMvc.perform(get("/expired123"))
+                .andExpect(status().isGone())
+                .andExpect(jsonPath("$.status").value(410))
+                .andExpect(jsonPath("$.error").value("Gone"))
+                .andExpect(jsonPath("$.message")
+                        .value("Short URL has expired for code: expired123"));
+    }
+
+    @Test
+    void shouldReturnGoneWhenShortUrlIsInactive() throws Exception {
+        when(shortUrlService.getByShortCode("inactive123"))
+                .thenThrow(new ShortUrlInactiveException("inactive123"));
+
+        mockMvc.perform(get("/inactive123"))
+                .andExpect(status().isGone())
+                .andExpect(jsonPath("$.status").value(410))
+                .andExpect(jsonPath("$.error").value("Gone"))
+                .andExpect(jsonPath("$.message")
+                        .value("Short URL is inactive for code: inactive123"));
+    }
+
+    @Test
+    void shouldDeactivateShortUrl() throws Exception {
+        ShortUrl shortUrl = new ShortUrl(
+                "https://example.com",
+                "abc123"
+        );
+
+        shortUrl.deactivate();
+
+        when(shortUrlService.deactivateShortUrl("abc123"))
+                .thenReturn(shortUrl);
+
+        mockMvc.perform(patch("/urls/abc123/deactivate"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.shortCode")
+                        .value("abc123"))
+                .andExpect(jsonPath("$.active")
+                        .value(false));
+    }
+
+    @Test
+    void shouldActivateShortUrl() throws Exception {
+        ShortUrl shortUrl = new ShortUrl(
+                "https://example.com",
+                "abc123"
+        );
+
+        when(shortUrlService.activateShortUrl("abc123"))
+                .thenReturn(shortUrl);
+
+        mockMvc.perform(patch("/urls/abc123/activate"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.shortCode")
+                        .value("abc123"))
+                .andExpect(jsonPath("$.active")
+                        .value(true));
+    }
+
+    @Test
+    void shouldUpdateShortUrl() throws Exception {
+        LocalDateTime expiresAt =
+                LocalDateTime.of(2030, 1, 1, 10, 0);
+
+        ShortUrl shortUrl = new ShortUrl(
+                "https://new-example.com",
+                "abc123",
+                expiresAt
+        );
+
+        when(shortUrlService.updateShortUrl(
+                eq("abc123"),
+                eq("https://new-example.com"),
+                eq(expiresAt)
+        )).thenReturn(shortUrl);
+
+        mockMvc.perform(patch("/urls/abc123")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                            {
+                              "originalUrl": "https://new-example.com",
+                              "expiresAt": "2030-01-01T10:00:00"
+                            }
+                            """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.originalUrl")
+                        .value("https://new-example.com"))
+                .andExpect(jsonPath("$.shortCode")
+                        .value("abc123"))
+                .andExpect(jsonPath("$.expiresAt")
+                        .value("2030-01-01T10:00:00"))
+                .andExpect(jsonPath("$.active")
+                        .value(true));
+    }
+
+    @Test
+    void shouldDeleteShortUrl() throws Exception {
+        mockMvc.perform(delete("/urls/abc123"))
+                .andExpect(status().isNoContent());
     }
 }
