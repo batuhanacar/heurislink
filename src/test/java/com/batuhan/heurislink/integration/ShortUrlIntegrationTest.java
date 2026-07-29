@@ -2,6 +2,7 @@ package com.batuhan.heurislink.integration;
 
 import com.batuhan.heurislink.messaging.UrlClickProducer;
 import com.batuhan.heurislink.repository.ShortUrlRepository;
+import com.batuhan.heurislink.service.RateLimitService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -42,6 +43,9 @@ class ShortUrlIntegrationTest {
 
     @MockitoBean
     private UrlClickProducer urlClickProducer;
+
+    @MockitoBean
+    private RateLimitService rateLimitService;
 
     @BeforeEach
     void setUp() {

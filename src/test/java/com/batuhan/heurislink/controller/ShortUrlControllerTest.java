@@ -2,8 +2,10 @@ package com.batuhan.heurislink.controller;
 
 import com.batuhan.heurislink.entity.ShortUrl;
 import com.batuhan.heurislink.exception.GlobalExceptionHandler;
+import com.batuhan.heurislink.exception.RateLimitExceededException;
 import com.batuhan.heurislink.exception.ShortUrlNotFoundException;
 import com.batuhan.heurislink.messaging.UrlClickProducer;
+import com.batuhan.heurislink.service.RateLimitService;
 import com.batuhan.heurislink.service.ShortUrlService;
 import com.batuhan.heurislink.service.UrlClickService;
 import org.junit.jupiter.api.Test;
@@ -14,6 +16,8 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -37,6 +41,9 @@ class ShortUrlControllerTest {
 
     @MockitoBean
     private UrlClickProducer urlClickProducer;
+
+    @MockitoBean
+    private RateLimitService rateLimitService;
 
     @Test
     void shouldCreateShortUrl() throws Exception {
@@ -97,7 +104,6 @@ class ShortUrlControllerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.status").value(400))
                 .andExpect(jsonPath("$.error").value("Bad Request"));
-
     }
 
     @Test
@@ -130,5 +136,30 @@ class ShortUrlControllerTest {
                 .andExpect(jsonPath("$.error").value("Not Found"))
                 .andExpect(jsonPath("$.message")
                         .value("Short URL not found for code: unknown"));
+    }
+
+    @Test
+    void shouldReturnTooManyRequestsWhenRateLimitIsExceeded()
+            throws Exception {
+
+        doThrow(new RateLimitExceededException())
+                .when(rateLimitService)
+                .checkRateLimit(anyString());
+
+        mockMvc.perform(post("/urls")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "originalUrl": "https://example.com"
+                                }
+                                """))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(jsonPath("$.status").value(429))
+                .andExpect(jsonPath("$.error")
+                        .value("Too Many Requests"))
+                .andExpect(jsonPath("$.message")
+                        .value(
+                                "Rate limit exceeded. Please try again later."
+                        ));
     }
 }

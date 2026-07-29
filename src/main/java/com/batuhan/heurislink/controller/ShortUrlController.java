@@ -6,8 +6,10 @@ import com.batuhan.heurislink.dto.ShortUrlAnalyticsResponse;
 import com.batuhan.heurislink.entity.ShortUrl;
 import com.batuhan.heurislink.event.UrlClickEvent;
 import com.batuhan.heurislink.messaging.UrlClickProducer;
+import com.batuhan.heurislink.service.RateLimitService;
 import com.batuhan.heurislink.service.ShortUrlService;
 import com.batuhan.heurislink.service.UrlClickService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -26,14 +28,20 @@ public class ShortUrlController {
     private final ShortUrlService shortUrlService;
     private final UrlClickService urlClickService;
     private final UrlClickProducer urlClickProducer;
+    private final RateLimitService rateLimitService;
 
     @Value("${app.base-url}")
     private String baseUrl;
 
     @PostMapping("/urls")
     public ResponseEntity<CreateShortUrlResponse> createShortUrl(
-            @Valid @RequestBody CreateShortUrlRequest request
+            @Valid @RequestBody CreateShortUrlRequest request,
+            HttpServletRequest httpRequest
     ) {
+        String clientIp = httpRequest.getRemoteAddr();
+
+        rateLimitService.checkRateLimit(clientIp);
+
         ShortUrl shortUrl =
                 shortUrlService.createShortUrl(request.originalUrl());
 
