@@ -7,6 +7,17 @@ spring:
     username: ${DB_USERNAME:postgres}
     password: ${DB_PASSWORD:postgres}
 
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+
+  cache:
+    type: redis
+    cache-names: shortUrls
+    redis:
+      time-to-live: 10m
+
   jpa:
     open-in-view: false
     hibernate:
@@ -16,14 +27,11 @@ spring:
   flyway:
     enabled: true
 
-
 server:
   port: 8080
 
-
 app:
   base-url: ${APP_BASE_URL:http://localhost:8080}
-
 
 management:
   endpoints:

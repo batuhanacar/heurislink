@@ -23,6 +23,24 @@ services:
     networks:
       - heurislink-network
 
+
+  redis:
+    image: redis:8-alpine
+    container_name: heurislink-redis
+
+    ports:
+      - "6379:6379"
+
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+    networks:
+      - heurislink-network
+
+
   heurislink:
     build:
       context: .
@@ -36,18 +54,24 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      redis:
+        condition: service_healthy
 
     environment:
       DB_URL: jdbc:postgresql://postgres:5432/heurislink
       DB_USERNAME: postgres
       DB_PASSWORD: postgres
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
       APP_BASE_URL: http://localhost:8080
 
     networks:
       - heurislink-network
 
+
 volumes:
   postgres-data:
+
 
 networks:
   heurislink-network:

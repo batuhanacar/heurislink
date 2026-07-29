@@ -5,6 +5,7 @@ import com.batuhan.heurislink.exception.ShortUrlNotFoundException;
 import com.batuhan.heurislink.repository.ShortUrlRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.cache.annotation.Cacheable;
 
 import java.security.SecureRandom;
 
@@ -38,6 +39,7 @@ public class ShortUrlService {
         return shortCode;
     }
 
+    @Cacheable(cacheNames = "shortUrls", key = "#shortCode")
     public ShortUrl getByShortCode(String shortCode) {
         return shortUrlRepository.findByShortCode(shortCode)
                 .orElseThrow(() ->

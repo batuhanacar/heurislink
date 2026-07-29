@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.io.Serializable;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -11,7 +12,7 @@ import java.util.UUID;
 @NoArgsConstructor
 @Entity
 @Table(name = "short_urls")
-public class ShortUrl {
+public class ShortUrl implements Serializable {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
