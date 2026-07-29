@@ -4,6 +4,7 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 public record UrlClickEvent(
+        UUID eventId,
         UUID shortUrlId,
         LocalDateTime clickedAt
 ) {

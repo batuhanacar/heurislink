@@ -17,6 +17,9 @@ public class UrlClick {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
+    @Column(name = "event_id", nullable = false, unique = true)
+    private UUID eventId;
+
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "short_url_id", nullable = false)
     private ShortUrl shortUrl;
@@ -29,7 +32,12 @@ public class UrlClick {
         this.clickedAt = LocalDateTime.now();
     }
 
-    public UrlClick(ShortUrl shortUrl, LocalDateTime clickedAt) {
+    public UrlClick(
+            UUID eventId,
+            ShortUrl shortUrl,
+            LocalDateTime clickedAt
+    ) {
+        this.eventId = eventId;
         this.shortUrl = shortUrl;
         this.clickedAt = clickedAt;
     }

@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.net.URI;
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @RestController
 @RequiredArgsConstructor
@@ -62,6 +63,7 @@ public class ShortUrlController {
 
         UrlClickEvent event =
                 new UrlClickEvent(
+                        UUID.randomUUID(),
                         shortUrl.getId(),
                         LocalDateTime.now()
                 );
