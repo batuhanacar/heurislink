@@ -8,6 +8,8 @@ public record CreateShortUrlResponse(
         String originalUrl,
         String shortCode,
         String shortUrl,
-        LocalDateTime createdAt
+        LocalDateTime createdAt,
+        LocalDateTime expiresAt,
+        boolean active
 ) {
 }

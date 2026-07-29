@@ -1,4 +1,10 @@
 package com.batuhan.heurislink.dto;
 
-public class UpdateShortUrlStatusResponse {
+import java.util.UUID;
+
+public record UpdateShortUrlStatusResponse(
+        UUID id,
+        String shortCode,
+        boolean active
+) {
 }
