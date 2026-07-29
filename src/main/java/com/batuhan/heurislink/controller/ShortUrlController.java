@@ -4,6 +4,8 @@ import com.batuhan.heurislink.dto.CreateShortUrlRequest;
 import com.batuhan.heurislink.dto.CreateShortUrlResponse;
 import com.batuhan.heurislink.dto.ShortUrlAnalyticsResponse;
 import com.batuhan.heurislink.entity.ShortUrl;
+import com.batuhan.heurislink.event.UrlClickEvent;
+import com.batuhan.heurislink.messaging.UrlClickProducer;
 import com.batuhan.heurislink.service.ShortUrlService;
 import com.batuhan.heurislink.service.UrlClickService;
 import jakarta.validation.Valid;
@@ -14,6 +16,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.net.URI;
+import java.time.LocalDateTime;
 
 @RestController
 @RequiredArgsConstructor
@@ -21,6 +24,7 @@ public class ShortUrlController {
 
     private final ShortUrlService shortUrlService;
     private final UrlClickService urlClickService;
+    private final UrlClickProducer urlClickProducer;
 
     @Value("${app.base-url}")
     private String baseUrl;
@@ -56,7 +60,13 @@ public class ShortUrlController {
         ShortUrl shortUrl =
                 shortUrlService.getByShortCode(shortCode);
 
-        urlClickService.recordClick(shortUrl);
+        UrlClickEvent event =
+                new UrlClickEvent(
+                        shortUrl.getId(),
+                        LocalDateTime.now()
+                );
+
+        urlClickProducer.sendClickEvent(event);
 
         return ResponseEntity
                 .status(HttpStatus.FOUND)

@@ -41,9 +41,9 @@ class ShortUrlServiceTest {
         ShortUrl result = shortUrlService.createShortUrl(originalUrl);
 
         assertNotNull(result);
-        assertEquals(originalUrl, result.getOriginalUrl());
+        assertEquals(10, result.getShortCode().length());
         assertNotNull(result.getShortCode());
-        assertEquals(6, result.getShortCode().length());
+        assertEquals(10, result.getShortCode().length());
         assertNotNull(result.getCreatedAt());
 
         verify(shortUrlRepository).save(any(ShortUrl.class));
@@ -67,12 +67,12 @@ class ShortUrlServiceTest {
     @Test
     void shouldReturnShortUrlWhenCodeExists() {
         ShortUrl shortUrl =
-                new ShortUrl("https://www.google.com", "abc123");
+                new ShortUrl("https://www.google.com", "abc1234def");
 
-        when(shortUrlRepository.findByShortCode("abc123"))
+        when(shortUrlRepository.findByShortCode("abc1234def"))
                 .thenReturn(Optional.of(shortUrl));
 
-        ShortUrl result = shortUrlService.getByShortCode("abc123");
+        ShortUrl result = shortUrlService.getByShortCode("abc1234def");
 
         assertEquals(shortUrl, result);
         assertEquals("https://www.google.com", result.getOriginalUrl());

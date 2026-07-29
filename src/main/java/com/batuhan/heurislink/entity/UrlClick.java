@@ -28,4 +28,9 @@ public class UrlClick {
         this.shortUrl = shortUrl;
         this.clickedAt = LocalDateTime.now();
     }
+
+    public UrlClick(ShortUrl shortUrl, LocalDateTime clickedAt) {
+        this.shortUrl = shortUrl;
+        this.clickedAt = clickedAt;
+    }
 }

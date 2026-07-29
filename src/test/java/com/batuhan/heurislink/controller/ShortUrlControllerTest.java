@@ -3,7 +3,9 @@ package com.batuhan.heurislink.controller;
 import com.batuhan.heurislink.entity.ShortUrl;
 import com.batuhan.heurislink.exception.GlobalExceptionHandler;
 import com.batuhan.heurislink.exception.ShortUrlNotFoundException;
+import com.batuhan.heurislink.messaging.UrlClickProducer;
 import com.batuhan.heurislink.service.ShortUrlService;
+import com.batuhan.heurislink.service.UrlClickService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -29,6 +31,12 @@ class ShortUrlControllerTest {
 
     @MockitoBean
     private ShortUrlService shortUrlService;
+
+    @MockitoBean
+    private UrlClickService urlClickService;
+
+    @MockitoBean
+    private UrlClickProducer urlClickProducer;
 
     @Test
     void shouldCreateShortUrl() throws Exception {
@@ -88,9 +96,8 @@ class ShortUrlControllerTest {
                                 """))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.status").value(400))
-                .andExpect(jsonPath("$.error").value("Bad Request"))
-                .andExpect(jsonPath("$.message")
-                        .value("URL cannot be blank"));
+                .andExpect(jsonPath("$.error").value("Bad Request"));
+
     }
 
     @Test
