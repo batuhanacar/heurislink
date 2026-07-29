@@ -17,16 +17,10 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleShortUrlNotFound(
             ShortUrlNotFoundException exception
     ) {
-        ErrorResponse response = new ErrorResponse(
-                HttpStatus.NOT_FOUND.value(),
-                HttpStatus.NOT_FOUND.getReasonPhrase(),
-                exception.getMessage(),
-                LocalDateTime.now()
+        return buildResponse(
+                HttpStatus.NOT_FOUND,
+                exception.getMessage()
         );
-
-        return ResponseEntity
-                .status(HttpStatus.NOT_FOUND)
-                .body(response);
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
@@ -39,31 +33,55 @@ public class GlobalExceptionHandler {
                 .map(error -> error.getDefaultMessage())
                 .collect(Collectors.joining(", "));
 
-        ErrorResponse response = new ErrorResponse(
-                HttpStatus.BAD_REQUEST.value(),
-                HttpStatus.BAD_REQUEST.getReasonPhrase(),
-                message,
-                LocalDateTime.now()
+        return buildResponse(
+                HttpStatus.BAD_REQUEST,
+                message
         );
-
-        return ResponseEntity
-                .status(HttpStatus.BAD_REQUEST)
-                .body(response);
     }
 
     @ExceptionHandler(RateLimitExceededException.class)
     public ResponseEntity<ErrorResponse> handleRateLimitExceeded(
             RateLimitExceededException exception
     ) {
+        return buildResponse(
+                HttpStatus.TOO_MANY_REQUESTS,
+                exception.getMessage()
+        );
+    }
+
+    @ExceptionHandler(ShortUrlExpiredException.class)
+    public ResponseEntity<ErrorResponse> handleShortUrlExpired(
+            ShortUrlExpiredException exception
+    ) {
+        return buildResponse(
+                HttpStatus.GONE,
+                exception.getMessage()
+        );
+    }
+
+    @ExceptionHandler(ShortUrlInactiveException.class)
+    public ResponseEntity<ErrorResponse> handleShortUrlInactive(
+            ShortUrlInactiveException exception
+    ) {
+        return buildResponse(
+                HttpStatus.GONE,
+                exception.getMessage()
+        );
+    }
+
+    private ResponseEntity<ErrorResponse> buildResponse(
+            HttpStatus status,
+            String message
+    ) {
         ErrorResponse response = new ErrorResponse(
-                HttpStatus.TOO_MANY_REQUESTS.value(),
-                HttpStatus.TOO_MANY_REQUESTS.getReasonPhrase(),
-                exception.getMessage(),
+                status.value(),
+                status.getReasonPhrase(),
+                message,
                 LocalDateTime.now()
         );
 
         return ResponseEntity
-                .status(HttpStatus.TOO_MANY_REQUESTS)
+                .status(status)
                 .body(response);
     }
 }
