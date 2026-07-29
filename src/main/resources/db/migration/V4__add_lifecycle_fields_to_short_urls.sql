@@ -1,0 +1,5 @@
+ALTER TABLE short_urls
+    ADD COLUMN expires_at TIMESTAMP;
+
+ALTER TABLE short_urls
+    ADD COLUMN active BOOLEAN NOT NULL DEFAULT TRUE;
