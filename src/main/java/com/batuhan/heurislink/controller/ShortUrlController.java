@@ -1,8 +1,6 @@
 package com.batuhan.heurislink.controller;
 
-import com.batuhan.heurislink.dto.CreateShortUrlRequest;
-import com.batuhan.heurislink.dto.CreateShortUrlResponse;
-import com.batuhan.heurislink.dto.ShortUrlAnalyticsResponse;
+import com.batuhan.heurislink.dto.*;
 import com.batuhan.heurislink.entity.ShortUrl;
 import com.batuhan.heurislink.event.UrlClickEvent;
 import com.batuhan.heurislink.messaging.UrlClickProducer;
@@ -43,7 +41,10 @@ public class ShortUrlController {
         rateLimitService.checkRateLimit(clientIp);
 
         ShortUrl shortUrl =
-                shortUrlService.createShortUrl(request.originalUrl());
+                shortUrlService.createShortUrl(
+                        request.originalUrl(),
+                        request.expiresAt()
+                );
 
         String fullShortUrl =
                 baseUrl + "/" + shortUrl.getShortCode();
@@ -54,7 +55,9 @@ public class ShortUrlController {
                         shortUrl.getOriginalUrl(),
                         shortUrl.getShortCode(),
                         fullShortUrl,
-                        shortUrl.getCreatedAt()
+                        shortUrl.getCreatedAt(),
+                        shortUrl.getExpiresAt(),
+                        shortUrl.isActive()
                 );
 
         return ResponseEntity
@@ -104,5 +107,70 @@ public class ShortUrlController {
                 );
 
         return ResponseEntity.ok(response);
+    }
+
+    @PatchMapping("/urls/{shortCode}/deactivate")
+    public ResponseEntity<UpdateShortUrlStatusResponse> deactivateShortUrl(
+            @PathVariable String shortCode
+    ) {
+        ShortUrl shortUrl =
+                shortUrlService.deactivateShortUrl(shortCode);
+
+        UpdateShortUrlStatusResponse response =
+                new UpdateShortUrlStatusResponse(
+                        shortUrl.getId(),
+                        shortUrl.getShortCode(),
+                        shortUrl.isActive()
+                );
+
+        return ResponseEntity.ok(response);
+    }
+
+    @PatchMapping("/urls/{shortCode}/activate")
+    public ResponseEntity<UpdateShortUrlStatusResponse> activateShortUrl(
+            @PathVariable String shortCode
+    ) {
+        ShortUrl shortUrl =
+                shortUrlService.activateShortUrl(shortCode);
+
+        UpdateShortUrlStatusResponse response =
+                new UpdateShortUrlStatusResponse(
+                        shortUrl.getId(),
+                        shortUrl.getShortCode(),
+                        shortUrl.isActive()
+                );
+
+        return ResponseEntity.ok(response);
+    }
+
+    @PatchMapping("/urls/{shortCode}")
+    public ResponseEntity<UpdateShortUrlResponse> updateShortUrl(
+            @PathVariable String shortCode,
+            @Valid @RequestBody UpdateShortUrlRequest request
+    ) {
+        ShortUrl shortUrl = shortUrlService.updateShortUrl(
+                shortCode,
+                request.originalUrl(),
+                request.expiresAt()
+        );
+
+        UpdateShortUrlResponse response = new UpdateShortUrlResponse(
+                shortUrl.getId(),
+                shortUrl.getOriginalUrl(),
+                shortUrl.getShortCode(),
+                shortUrl.getExpiresAt(),
+                shortUrl.isActive()
+        );
+
+        return ResponseEntity.ok(response);
+    }
+
+    @DeleteMapping("/urls/{shortCode}")
+    public ResponseEntity<Void> deleteShortUrl(
+            @PathVariable String shortCode
+    ) {
+        shortUrlService.deleteShortUrl(shortCode);
+
+        return ResponseEntity.noContent().build();
     }
 }
