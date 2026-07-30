@@ -6,6 +6,9 @@ import com.batuhan.heurislink.messaging.UrlClickProducer;
 import com.batuhan.heurislink.service.RateLimitService;
 import com.batuhan.heurislink.service.ShortUrlService;
 import com.batuhan.heurislink.service.UrlClickService;
+import com.batuhan.heurislink.web.ClientIpResolver;
+import jakarta.servlet.http.HttpServletRequest;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -16,11 +19,8 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.LocalDateTime;
 
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.isNull;
-import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -46,12 +46,24 @@ class ShortUrlControllerTest {
     @MockitoBean
     private RateLimitService rateLimitService;
 
+    @MockitoBean
+    private ClientIpResolver clientIpResolver;
+
+    @BeforeEach
+    void setUp() {
+        when(clientIpResolver.resolve(any(HttpServletRequest.class)))
+                .thenReturn("203.0.113.25");
+    }
+
     @Test
     void shouldCreateShortUrl() throws Exception {
         ShortUrl shortUrl = new ShortUrl(
                 "https://www.google.com",
                 "abc123"
         );
+
+        when(clientIpResolver.resolve(any(HttpServletRequest.class)))
+                .thenReturn("203.0.113.25");
 
         when(shortUrlService.createShortUrl(
                 eq("https://www.google.com"),
@@ -61,10 +73,10 @@ class ShortUrlControllerTest {
         mockMvc.perform(post("/urls")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {
-                                  "originalUrl": "https://www.google.com"
-                                }
-                                """))
+                            {
+                              "originalUrl": "https://www.google.com"
+                            }
+                            """))
                 .andExpect(status().isCreated())
                 .andExpect(content().contentTypeCompatibleWith(
                         MediaType.APPLICATION_JSON
@@ -75,6 +87,12 @@ class ShortUrlControllerTest {
                         .value("abc123"))
                 .andExpect(jsonPath("$.shortUrl")
                         .value("http://localhost:8080/abc123"));
+
+        verify(clientIpResolver)
+                .resolve(any(HttpServletRequest.class));
+
+        verify(rateLimitService)
+                .checkRateLimit("203.0.113.25");
     }
 
     @Test

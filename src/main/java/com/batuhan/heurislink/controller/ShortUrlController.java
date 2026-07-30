@@ -7,6 +7,7 @@ import com.batuhan.heurislink.messaging.UrlClickProducer;
 import com.batuhan.heurislink.service.RateLimitService;
 import com.batuhan.heurislink.service.ShortUrlService;
 import com.batuhan.heurislink.service.UrlClickService;
+import com.batuhan.heurislink.web.ClientIpResolver;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -27,6 +28,7 @@ public class ShortUrlController {
     private final UrlClickService urlClickService;
     private final UrlClickProducer urlClickProducer;
     private final RateLimitService rateLimitService;
+    private final ClientIpResolver clientIpResolver;
 
     @Value("${app.base-url}")
     private String baseUrl;
@@ -34,17 +36,15 @@ public class ShortUrlController {
     @PostMapping("/urls")
     public ResponseEntity<CreateShortUrlResponse> createShortUrl(
             @Valid @RequestBody CreateShortUrlRequest request,
-            HttpServletRequest httpRequest
-    ) {
-        String clientIp = httpRequest.getRemoteAddr();
+            HttpServletRequest httpServletRequest) {
 
+        String clientIp = clientIpResolver.resolve(httpServletRequest);
         rateLimitService.checkRateLimit(clientIp);
 
-        ShortUrl shortUrl =
-                shortUrlService.createShortUrl(
-                        request.originalUrl(),
-                        request.expiresAt()
-                );
+        ShortUrl shortUrl = shortUrlService.createShortUrl(
+                request.originalUrl(),
+                request.expiresAt()
+        );
 
         String fullShortUrl =
                 baseUrl + "/" + shortUrl.getShortCode();

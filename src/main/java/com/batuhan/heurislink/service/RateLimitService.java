@@ -12,17 +12,26 @@ import java.time.Duration;
 @RequiredArgsConstructor
 public class RateLimitService {
 
+    private static final String KEY_PREFIX = "rate-limit:create-url:";
+
     private final StringRedisTemplate stringRedisTemplate;
     private final RateLimitProperties rateLimitProperties;
 
+
     public void checkRateLimit(String clientIp) {
-        String key = "rate-limit:create-url:" + clientIp;
+        String key = KEY_PREFIX + clientIp;
 
         Long requestCount = stringRedisTemplate
                 .opsForValue()
                 .increment(key);
 
-        if (requestCount != null && requestCount == 1) {
+        if (requestCount == null) {
+            throw new IllegalStateException(
+                    "Could not increment rate-limit counter"
+            );
+        }
+
+        if (requestCount == 1L) {
             stringRedisTemplate.expire(
                     key,
                     Duration.ofSeconds(
@@ -31,11 +40,7 @@ public class RateLimitService {
             );
         }
 
-        if (
-                requestCount != null
-                        && requestCount
-                        > rateLimitProperties.maxRequests()
-        ) {
+        if (requestCount > rateLimitProperties.maxRequests()) {
             throw new RateLimitExceededException();
         }
     }

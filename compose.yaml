@@ -28,7 +28,6 @@ services:
     image: redis:8-alpine
     container_name: heurislink-redis
 
-
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -45,7 +44,7 @@ services:
     hostname: kafka
 
     environment:
-      KAFKA_NODE_ID: 1
+      KAFKA_NODE_ID: "1"
       KAFKA_PROCESS_ROLES: broker,controller
 
       KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
@@ -57,10 +56,10 @@ services:
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
       KAFKA_CONTROLLER_QUORUM_VOTERS: 1@localhost:9093
 
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
-      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
-      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: "1"
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: "1"
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: "1"
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: "0"
 
     healthcheck:
       test:
@@ -77,6 +76,7 @@ services:
       heurislink-network:
         aliases:
           - kafka
+
 
   heurislink:
     build:
@@ -100,14 +100,14 @@ services:
       DB_PASSWORD: postgres
 
       REDIS_HOST: redis
-      REDIS_PORT: 6379
+      REDIS_PORT: "6379"
 
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
 
       APP_BASE_URL: http://localhost:8080
 
-      RATE_LIMIT_MAX_REQUESTS: 10
-      RATE_LIMIT_WINDOW_SECONDS: 60
+      APP_RATELIMIT_MAXREQUESTS: "10"
+      APP_RATELIMIT_WINDOWSECONDS: "60"
 
     networks:
       - heurislink-network
