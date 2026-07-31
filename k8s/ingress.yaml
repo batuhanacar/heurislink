@@ -1,0 +1,17 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: heurislink
+  namespace: heurislink
+spec:
+  ingressClassName: cloud-provider-kind
+  rules:
+    - http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: heurislink
+                port:
+                  number: 8080
