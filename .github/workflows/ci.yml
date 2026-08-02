@@ -46,3 +46,43 @@ jobs:
 
       - name: Build Docker image
         run: docker build -t heurislink:ci .
+
+  kubernetes-validation:
+    name: Kubernetes Validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: docker-build
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Install kubectl
+        run: |
+          KUBECTL_VERSION="$(curl -L -s https://dl.k8s.io/release/stable.txt)"
+
+          curl -LO \
+            "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl"
+
+          chmod +x kubectl
+          sudo mv kubectl /usr/local/bin/kubectl
+
+          kubectl version --client
+
+      - name: Validate Kubernetes manifests
+        run: |
+          for manifest in \
+            k8s/namespace.yaml \
+            k8s/configmap.yaml \
+            k8s/postgres.yaml \
+            k8s/redis.yaml \
+            k8s/kafka.yaml \
+            k8s/heurislink.yaml \
+            k8s/ingress.yaml
+          do
+            echo "Validating ${manifest}"
+            kubectl apply \
+              --dry-run=client \
+              --validate=false \
+              -f "${manifest}"
+          done
