@@ -33,3 +33,16 @@ jobs:
 
       - name: Run tests
         run: ./gradlew test
+
+  docker-build:
+    name: Docker Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: test
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Build Docker image
+        run: docker build -t heurislink:ci .
