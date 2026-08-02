@@ -57,21 +57,28 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
 
-      - name: Install kubectl
+      - name: Install Kubeconform
         run: |
-          KUBECTL_VERSION="$(curl -L -s https://dl.k8s.io/release/stable.txt)"
+          KUBECONFORM_VERSION="0.7.0"
 
-          curl -LO \
-            "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl"
+          curl -L \
+            -o kubeconform.tar.gz \
+            "https://github.com/yannh/kubeconform/releases/download/v${KUBECONFORM_VERSION}/kubeconform-linux-amd64.tar.gz"
 
-          chmod +x kubectl
-          sudo mv kubectl /usr/local/bin/kubectl
+          tar -xzf kubeconform.tar.gz kubeconform
 
-          kubectl version --client
+          sudo install \
+            -m 0755 \
+            kubeconform \
+            /usr/local/bin/kubeconform
+
+          kubeconform -v
 
       - name: Validate Kubernetes manifests
         run: |
-          for manifest in \
+          kubeconform \
+            -strict \
+            -summary \
             k8s/namespace.yaml \
             k8s/configmap.yaml \
             k8s/postgres.yaml \
@@ -79,13 +86,6 @@ jobs:
             k8s/kafka.yaml \
             k8s/heurislink.yaml \
             k8s/ingress.yaml
-          do
-            echo "Validating ${manifest}"
-            kubectl apply \
-              --dry-run=client \
-              --validate=false \
-              -f "${manifest}"
-          done
 
   publish:
     name: Publish Docker Image
