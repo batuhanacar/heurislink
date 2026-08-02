@@ -127,3 +127,8 @@ jobs:
           tags: |
             ${{ steps.image.outputs.name }}:latest
             ${{ steps.image.outputs.name }}:${{ github.sha }}
+
+      - name: Verify published image
+        run: |
+          docker pull "${{ steps.image.outputs.name }}:${{ github.sha }}"
+          docker image inspect "${{ steps.image.outputs.name }}:${{ github.sha }}"
