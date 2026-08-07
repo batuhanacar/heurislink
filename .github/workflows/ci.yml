@@ -85,7 +85,10 @@ jobs:
             k8s/redis.yaml \
             k8s/kafka.yaml \
             k8s/heurislink.yaml \
-            k8s/ingress.yaml
+            k8s/ingress.yaml \
+            k8s/prometheus.yaml \
+            k8s/grafana.yaml \
+            k8s/grafana-dashboard.yaml
 
   publish:
     name: Publish Docker Image
