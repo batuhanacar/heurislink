@@ -9,11 +9,33 @@ data:
 
     datasources:
       - name: Prometheus
+        uid: prometheus
         type: prometheus
         access: proxy
         url: http://prometheus:9090
         isDefault: true
         editable: false
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-provider
+  namespace: heurislink
+data:
+  dashboard-provider.yaml: |
+    apiVersion: 1
+
+    providers:
+      - name: Heurislink
+        orgId: 1
+        folder: Heurislink
+        type: file
+        disableDeletion: false
+        editable: true
+
+        options:
+          path: /var/lib/grafana/dashboards
 
 ---
 apiVersion: apps/v1
@@ -87,10 +109,24 @@ spec:
             - name: datasources
               mountPath: /etc/grafana/provisioning/datasources
 
+            - name: dashboard-provider
+              mountPath: /etc/grafana/provisioning/dashboards
+
+            - name: dashboards
+              mountPath: /var/lib/grafana/dashboards
+
       volumes:
         - name: datasources
           configMap:
             name: grafana-datasources
+
+        - name: dashboard-provider
+          configMap:
+            name: grafana-dashboard-provider
+
+        - name: dashboards
+          configMap:
+            name: grafana-heurislink-dashboard
 
 ---
 apiVersion: v1
