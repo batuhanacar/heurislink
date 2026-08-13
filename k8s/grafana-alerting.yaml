@@ -1,0 +1,291 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-alerting
+  namespace: heurislink
+data:
+  alert-rules.yaml: |
+    apiVersion: 1
+
+    groups:
+      - orgId: 1
+        name: heurislink-alerts
+        folder: Heurislink
+        interval: 1m
+
+        rules:
+          - uid: heurislink_instances_down
+            title: HeurislinkInstanceDown
+            condition: B
+
+            data:
+              - refId: A
+                relativeTimeRange:
+                  from: 300
+                  to: 0
+                datasourceUid: prometheus
+                model:
+                  datasource:
+                    type: prometheus
+                    uid: prometheus
+                  expr: 'sum(up{job="heurislink"})'
+                  instant: true
+                  intervalMs: 1000
+                  maxDataPoints: 43200
+                  refId: A
+
+              - refId: B
+                relativeTimeRange:
+                  from: 0
+                  to: 0
+                datasourceUid: __expr__
+                model:
+                  conditions:
+                    - evaluator:
+                        params:
+                          - 3
+                        type: lt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                          - A
+                      reducer:
+                        params: []
+                        type: last
+                      type: query
+
+                  datasource:
+                    type: __expr__
+                    uid: __expr__
+
+                  intervalMs: 1000
+                  maxDataPoints: 43200
+                  refId: B
+                  type: classic_conditions
+
+            noDataState: Alerting
+            execErrState: Alerting
+            for: 2m
+
+            annotations:
+              summary: "Fewer than 3 Heurislink instances are available"
+              description: "The expected Heurislink replica count is 3."
+
+            labels:
+              service: heurislink
+              severity: critical
+
+          - uid: heurislink_high_5xx
+            title: High5xxErrorRate
+            condition: B
+
+            data:
+              - refId: A
+                relativeTimeRange:
+                  from: 300
+                  to: 0
+                datasourceUid: prometheus
+                model:
+                  datasource:
+                    type: prometheus
+                    uid: prometheus
+                  expr: '100 * sum(rate(http_server_requests_seconds_count{job="heurislink",status=~"5.."}[5m])) / clamp_min(sum(rate(http_server_requests_seconds_count{job="heurislink"}[5m])), 0.001)'
+                  instant: true
+                  intervalMs: 1000
+                  maxDataPoints: 43200
+                  refId: A
+
+              - refId: B
+                relativeTimeRange:
+                  from: 0
+                  to: 0
+                datasourceUid: __expr__
+                model:
+                  conditions:
+                    - evaluator:
+                        params:
+                          - 5
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                          - A
+                      reducer:
+                        params: []
+                        type: last
+                      type: query
+
+                  datasource:
+                    type: __expr__
+                    uid: __expr__
+
+                  intervalMs: 1000
+                  maxDataPoints: 43200
+                  refId: B
+                  type: classic_conditions
+
+            noDataState: NoData
+            execErrState: Alerting
+            for: 2m
+
+            annotations:
+              summary: "Heurislink 5xx error rate is above 5%"
+              description: "More than 5% of HTTP requests have returned a 5xx response."
+
+            labels:
+              service: heurislink
+              severity: critical
+
+          - uid: heurislink_high_cpu
+            title: HighCPUUsage
+            condition: B
+
+            data:
+              - refId: A
+                relativeTimeRange:
+                  from: 300
+                  to: 0
+                datasourceUid: prometheus
+                model:
+                  datasource:
+                    type: prometheus
+                    uid: prometheus
+                  expr: 'avg(process_cpu_usage{job="heurislink"})'
+                  instant: true
+                  intervalMs: 1000
+                  maxDataPoints: 43200
+                  refId: A
+
+              - refId: B
+                relativeTimeRange:
+                  from: 0
+                  to: 0
+                datasourceUid: __expr__
+                model:
+                  conditions:
+                    - evaluator:
+                        params:
+                          - 0.8
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                          - A
+                      reducer:
+                        params: []
+                        type: last
+                      type: query
+
+                  datasource:
+                    type: __expr__
+                    uid: __expr__
+
+                  intervalMs: 1000
+                  maxDataPoints: 43200
+                  refId: B
+                  type: classic_conditions
+
+            noDataState: NoData
+            execErrState: Alerting
+            for: 5m
+
+            annotations:
+              summary: "Heurislink CPU usage is above 80%"
+              description: "Average process CPU usage has remained above 80%."
+
+            labels:
+              service: heurislink
+              severity: warning
+
+          - uid: heurislink_high_heap
+            title: HighHeapUsage
+            condition: B
+
+            data:
+              - refId: A
+                relativeTimeRange:
+                  from: 300
+                  to: 0
+                datasourceUid: prometheus
+                model:
+                  datasource:
+                    type: prometheus
+                    uid: prometheus
+                  expr: 'max(sum by (instance) (jvm_memory_used_bytes{job="heurislink",area="heap"}) / sum by (instance) (jvm_memory_max_bytes{job="heurislink",area="heap"}))'
+                  instant: true
+                  intervalMs: 1000
+                  maxDataPoints: 43200
+                  refId: A
+
+              - refId: B
+                relativeTimeRange:
+                  from: 0
+                  to: 0
+                datasourceUid: __expr__
+                model:
+                  conditions:
+                    - evaluator:
+                        params:
+                          - 0.85
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                          - A
+                      reducer:
+                        params: []
+                        type: last
+                      type: query
+
+                  datasource:
+                    type: __expr__
+                    uid: __expr__
+
+                  intervalMs: 1000
+                  maxDataPoints: 43200
+                  refId: B
+                  type: classic_conditions
+
+            noDataState: NoData
+            execErrState: Alerting
+            for: 5m
+
+            annotations:
+              summary: "Heurislink JVM heap usage is above 85%"
+              description: "At least one Heurislink instance has high JVM heap utilization."
+
+            labels:
+              service: heurislink
+              severity: warning
+
+  notifications.yaml: |
+    apiVersion: 1
+
+    contactPoints:
+      - orgId: 1
+        name: telegram-heurislink
+
+        receivers:
+          - uid: telegram_heurislink
+            type: telegram
+            disableResolveMessage: false
+
+            settings:
+              bottoken: "$TELEGRAM_BOT_TOKEN"
+              chatid: "$TELEGRAM_CHAT_ID"
+
+    policies:
+      - orgId: 1
+        receiver: telegram-heurislink
+
+        group_by:
+          - grafana_folder
+          - alertname
+
+        group_wait: 10s
+        group_interval: 1m
+        repeat_interval: 4h
