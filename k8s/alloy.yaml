@@ -1,0 +1,160 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: alloy
+  namespace: heurislink
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: alloy
+  namespace: heurislink
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - pods
+      - pods/log
+    verbs:
+      - get
+      - list
+      - watch
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: alloy
+  namespace: heurislink
+subjects:
+  - kind: ServiceAccount
+    name: alloy
+    namespace: heurislink
+
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: alloy
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: alloy-config
+  namespace: heurislink
+data:
+  config.alloy: |
+    logging {
+      level  = "info"
+      format = "logfmt"
+    }
+
+    discovery.kubernetes "heurislink_pods" {
+      role = "pod"
+
+      namespaces {
+        names = ["heurislink"]
+      }
+
+      selectors {
+        role  = "pod"
+        label = "app=heurislink"
+      }
+    }
+
+    discovery.relabel "heurislink_logs" {
+      targets = discovery.kubernetes.heurislink_pods.targets
+
+      rule {
+        source_labels = ["__meta_kubernetes_namespace"]
+        target_label  = "namespace"
+      }
+
+      rule {
+        source_labels = ["__meta_kubernetes_pod_name"]
+        target_label  = "pod"
+      }
+
+      rule {
+        source_labels = ["__meta_kubernetes_pod_container_name"]
+        target_label  = "container"
+      }
+
+      rule {
+        target_label = "job"
+        replacement  = "heurislink"
+      }
+    }
+
+    loki.source.kubernetes "heurislink" {
+      targets    = discovery.relabel.heurislink_logs.output
+      forward_to = [loki.write.local.receiver]
+    }
+
+    loki.write "local" {
+      endpoint {
+        url = "http://loki:3100/loki/api/v1/push"
+      }
+    }
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: alloy
+  namespace: heurislink
+spec:
+  replicas: 1
+
+  selector:
+    matchLabels:
+      app: alloy
+
+  template:
+    metadata:
+      labels:
+        app: alloy
+
+    spec:
+      serviceAccountName: alloy
+
+      containers:
+        - name: alloy
+          image: grafana/alloy:v1.18.0
+          imagePullPolicy: IfNotPresent
+
+          args:
+            - run
+            - --server.http.listen-addr=0.0.0.0:12345
+            - --storage.path=/var/lib/alloy/data
+            - --disable-reporting
+            - /etc/alloy/config.alloy
+
+          ports:
+            - name: http
+              containerPort: 12345
+
+          readinessProbe:
+            httpGet:
+              path: /-/ready
+              port: http
+            periodSeconds: 5
+            failureThreshold: 12
+
+          resources:
+            requests:
+              memory: 64Mi
+              cpu: 50m
+            limits:
+              memory: 256Mi
+              cpu: 250m
+
+          volumeMounts:
+            - name: config
+              mountPath: /etc/alloy
+
+      volumes:
+        - name: config
+          configMap:
+            name: alloy-config
