@@ -1,0 +1,152 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: tempo-config
+  namespace: heurislink
+data:
+  tempo.yaml: |
+    stream_over_http_enabled: true
+
+    server:
+      http_listen_port: 3200
+
+    distributor:
+      receivers:
+        otlp:
+          protocols:
+            grpc:
+              endpoint: "0.0.0.0:4317"
+            http:
+              endpoint: "0.0.0.0:4318"
+
+    storage:
+      trace:
+        backend: local
+
+        wal:
+          path: /data/tempo/wal
+
+        local:
+          path: /data/tempo/blocks
+
+    usage_report:
+      reporting_enabled: false
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: tempo-data
+  namespace: heurislink
+spec:
+  accessModes:
+    - ReadWriteOnce
+
+  resources:
+    requests:
+      storage: 5Gi
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tempo
+  namespace: heurislink
+spec:
+  replicas: 1
+
+  selector:
+    matchLabels:
+      app: tempo
+
+  template:
+    metadata:
+      labels:
+        app: tempo
+
+    spec:
+      securityContext:
+        fsGroup: 10001
+
+      containers:
+        - name: tempo
+          image: grafana/tempo:3.0.2
+          imagePullPolicy: IfNotPresent
+
+          args:
+            - -config.file=/etc/tempo/tempo.yaml
+
+          ports:
+            - name: http
+              containerPort: 3200
+
+            - name: otlp-grpc
+              containerPort: 4317
+
+            - name: otlp-http
+              containerPort: 4318
+
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: http
+            periodSeconds: 5
+            failureThreshold: 12
+
+          livenessProbe:
+            httpGet:
+              path: /ready
+              port: http
+            periodSeconds: 10
+            failureThreshold: 6
+
+          resources:
+            requests:
+              memory: 256Mi
+              cpu: 100m
+            limits:
+              memory: 1Gi
+              cpu: 500m
+
+          volumeMounts:
+            - name: config
+              mountPath: /etc/tempo
+
+            - name: data
+              mountPath: /data/tempo
+
+      volumes:
+        - name: config
+          configMap:
+            name: tempo-config
+
+        - name: data
+          persistentVolumeClaim:
+            claimName: tempo-data
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: tempo
+  namespace: heurislink
+  labels:
+    app: tempo
+spec:
+  type: ClusterIP
+
+  selector:
+    app: tempo
+
+  ports:
+    - name: http
+      port: 3200
+      targetPort: http
+
+    - name: otlp-grpc
+      port: 4317
+      targetPort: otlp-grpc
+
+    - name: otlp-http
+      port: 4318
+      targetPort: otlp-http
