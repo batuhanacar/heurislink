@@ -88,6 +88,18 @@ spec:
             - name: GF_USERS_ALLOW_SIGN_UP
               value: "false"
 
+            - name: TELEGRAM_BOT_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: grafana-telegram-secret
+                  key: bot-token
+
+            - name: TELEGRAM_CHAT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: grafana-telegram-secret
+                  key: chat-id
+
           readinessProbe:
             httpGet:
               path: /api/health
@@ -122,6 +134,9 @@ spec:
             - name: dashboards
               mountPath: /var/lib/grafana/dashboards
 
+            - name: alerting
+              mountPath: /etc/grafana/provisioning/alerting
+
       volumes:
         - name: datasources
           configMap:
@@ -134,6 +149,10 @@ spec:
         - name: dashboards
           configMap:
             name: grafana-heurislink-dashboard
+
+        - name: alerting
+          configMap:
+            name: grafana-alerting
 
 ---
 apiVersion: v1
