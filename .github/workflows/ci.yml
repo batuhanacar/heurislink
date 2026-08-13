@@ -89,6 +89,8 @@ jobs:
             k8s/prometheus.yaml \
             k8s/grafana.yaml \
             k8s/grafana-dashboard.yaml
+            k8s/loki.yaml \
+            k8s/alloy.yaml
 
   publish:
     name: Publish Docker Image
