@@ -3,7 +3,7 @@ spring:
     name: heurislink
 
   lifecycle:
-      timeout-per-shutdown-phase: 30s
+    timeout-per-shutdown-phase: 30s
 
   datasource:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/heurislink}
@@ -51,12 +51,23 @@ server:
   forward-headers-strategy: framework
   shutdown: graceful
 
-
-
 app:
   base-url: ${APP_BASE_URL:http://localhost:8080}
 
 management:
+  tracing:
+    sampling:
+      probability: 1.0
+
+  opentelemetry:
+    resource-attributes:
+      service.name: heurislink
+
+    tracing:
+      export:
+        otlp:
+          endpoint: ${OTEL_EXPORTER_OTLP_TRACES_ENDPOINT:http://localhost:4318/v1/traces}
+
   endpoint:
     health:
       probes:
@@ -72,7 +83,6 @@ management:
       enabled: true
     readinessstate:
       enabled: true
-
 
 logging:
   level:
