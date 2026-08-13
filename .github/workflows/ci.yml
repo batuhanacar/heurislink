@@ -88,9 +88,10 @@ jobs:
             k8s/ingress.yaml \
             k8s/prometheus.yaml \
             k8s/grafana.yaml \
-            k8s/grafana-dashboard.yaml
+            k8s/grafana-dashboard.yaml \
             k8s/loki.yaml \
-            k8s/alloy.yaml
+            k8s/alloy.yaml \
+            k8s/tempo.yaml
 
   publish:
     name: Publish Docker Image
