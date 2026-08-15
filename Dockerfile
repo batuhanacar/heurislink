@@ -4,14 +4,24 @@ WORKDIR /app
 
 COPY . .
 
-RUN ./gradlew clean bootJar --no-daemon
+RUN ./gradlew bootJar
 
 
 FROM eclipse-temurin:21-jre
 
 WORKDIR /app
 
-COPY --from=builder /app/build/libs/heurislink-0.0.1-SNAPSHOT.jar app.jar
+COPY --from=builder /app/build/libs/*.jar app.jar
+
+RUN groupadd --gid 10001 heurislink \
+    && useradd \
+        --uid 10001 \
+        --gid 10001 \
+        --no-create-home \
+        --shell /usr/sbin/nologin \
+        heurislink
+
+USER 10001:10001
 
 EXPOSE 8080
 
