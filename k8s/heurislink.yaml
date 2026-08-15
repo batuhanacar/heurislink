@@ -5,7 +5,6 @@ metadata:
   namespace: heurislink
 
 spec:
-  replicas: 3
 
   progressDeadlineSeconds: 300
 
