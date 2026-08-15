@@ -47,6 +47,18 @@ jobs:
       - name: Build Docker image
         run: docker build -t heurislink:ci .
 
+      - name: Scan Docker image
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: heurislink:ci
+          scan-type: image
+          format: table
+          exit-code: "1"
+          ignore-unfixed: true
+          vuln-type: os,library
+          severity: HIGH,CRITICAL
+          version: v0.72.0
+
   kubernetes-validation:
     name: Kubernetes Validation
     runs-on: ubuntu-latest
@@ -89,9 +101,20 @@ jobs:
             k8s/prometheus.yaml \
             k8s/grafana.yaml \
             k8s/grafana-dashboard.yaml \
+            k8s/grafana-alerting.yaml \
             k8s/loki.yaml \
             k8s/alloy.yaml \
             k8s/tempo.yaml
+
+      - name: Scan Kubernetes manifests
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: config
+          scan-ref: k8s
+          format: table
+          exit-code: "0"
+          severity: HIGH,CRITICAL
+          version: v0.72.0
 
   publish:
     name: Publish Docker Image
