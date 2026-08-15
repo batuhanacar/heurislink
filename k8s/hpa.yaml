@@ -24,7 +24,6 @@ spec:
   behavior:
     scaleUp:
       stabilizationWindowSeconds: 0
-
       policies:
         - type: Pods
           value: 2
@@ -38,7 +37,6 @@ spec:
 
     scaleDown:
       stabilizationWindowSeconds: 300
-
       policies:
         - type: Pods
           value: 1
