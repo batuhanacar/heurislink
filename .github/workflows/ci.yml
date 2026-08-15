@@ -104,7 +104,9 @@ jobs:
             k8s/grafana-alerting.yaml \
             k8s/loki.yaml \
             k8s/alloy.yaml \
-            k8s/tempo.yaml
+            k8s/tempo.yaml \
+            k8s/hpa.yaml \
+            k8s/pdb.yaml \
 
       - name: Scan Kubernetes manifests
         uses: aquasecurity/trivy-action@v0.36.0
