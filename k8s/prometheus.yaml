@@ -3,6 +3,7 @@ kind: ConfigMap
 metadata:
   name: prometheus-config
   namespace: heurislink
+
 data:
   prometheus.yml: |
     global:
@@ -10,31 +11,31 @@ data:
       evaluation_interval: 15s
 
     scrape_configs:
-        - job_name: "heurislink"
-          
-          metrics_path: /actuator/prometheus
-          
-          kubernetes_sd_configs:
-            - role: pod
-              namespaces:
-                names:
-                  - heurislink
-          
-          relabel_configs:
-            - source_labels:
-                - __meta_kubernetes_namespace
-              action: keep
-              regex: heurislink
-            
-            - source_labels:
-                - __meta_kubernetes_pod_label_app
-              action: keep
-              regex: heurislink
-            
-            - source_labels:
-                - __meta_kubernetes_pod_container_port_name
-              action: keep
-              regex: http
+      - job_name: "heurislink"
+
+        metrics_path: /actuator/prometheus
+
+        kubernetes_sd_configs:
+          - role: pod
+            namespaces:
+              names:
+                - heurislink
+
+        relabel_configs:
+          - source_labels:
+              - __meta_kubernetes_namespace
+            action: keep
+            regex: heurislink
+
+          - source_labels:
+              - __meta_kubernetes_pod_label_app
+            action: keep
+            regex: heurislink
+
+          - source_labels:
+              - __meta_kubernetes_pod_container_port_name
+            action: keep
+            regex: http
 
 ---
 apiVersion: v1
@@ -49,6 +50,7 @@ kind: Role
 metadata:
   name: prometheus
   namespace: heurislink
+
 rules:
   - apiGroups:
       - ""
@@ -65,10 +67,12 @@ kind: RoleBinding
 metadata:
   name: prometheus
   namespace: heurislink
+
 subjects:
   - kind: ServiceAccount
     name: prometheus
     namespace: heurislink
+
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
@@ -80,8 +84,12 @@ kind: Deployment
 metadata:
   name: prometheus
   namespace: heurislink
+
 spec:
   replicas: 1
+
+  strategy:
+    type: Recreate
 
   selector:
     matchLabels:
@@ -94,6 +102,10 @@ spec:
 
     spec:
       serviceAccountName: prometheus
+
+      securityContext:
+        fsGroup: 65534
+        fsGroupChangePolicy: OnRootMismatch
 
       containers:
         - name: prometheus
@@ -134,10 +146,17 @@ spec:
             - name: config
               mountPath: /etc/prometheus
 
+            - name: prometheus-data
+              mountPath: /prometheus
+
       volumes:
         - name: config
           configMap:
             name: prometheus-config
+
+        - name: prometheus-data
+          persistentVolumeClaim:
+            claimName: prometheus-data
 
 ---
 apiVersion: v1
@@ -145,6 +164,7 @@ kind: Service
 metadata:
   name: prometheus
   namespace: heurislink
+
 spec:
   type: ClusterIP
 
