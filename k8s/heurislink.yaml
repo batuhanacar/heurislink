@@ -39,8 +39,8 @@ spec:
 
       containers:
         - name: heurislink
-          image: ghcr.io/batuhanacar/heurislink:latest
-          imagePullPolicy: Always
+          image: ghcr.io/batuhanacar/heurislink@sha256:5379a9dd1ad32f7b6b410efa607c02246546e1ee58ba4db22b6b29b6eafa47e5
+          imagePullPolicy: IfNotPresent
 
           securityContext:
             allowPrivilegeEscalation: false
