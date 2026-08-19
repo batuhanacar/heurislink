@@ -1,0 +1,205 @@
+name: Deploy
+
+on:
+  workflow_run:
+    workflows:
+      - CI
+    types:
+      - completed
+    branches:
+      - main
+
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: read
+
+concurrency:
+  group: heurislink-local-deployment
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy to Kubernetes
+
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      (
+        github.event.workflow_run.conclusion == 'success' &&
+        github.event.workflow_run.event == 'push' &&
+        github.event.workflow_run.head_branch == 'main'
+      )
+
+    runs-on:
+      - self-hosted
+      - Linux
+      - X64
+
+    timeout-minutes: 15
+
+    steps:
+      - name: Determine revision
+        id: revision
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          WORKFLOW_SHA: ${{ github.event.workflow_run.head_sha }}
+          CURRENT_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+
+          if [ "$EVENT_NAME" = "workflow_run" ]; then
+            SHA="$WORKFLOW_SHA"
+          else
+            SHA="$CURRENT_SHA"
+          fi
+
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+          echo "Deploying revision: $SHA"
+
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ steps.revision.outputs.sha }}
+
+      - name: Verify deployment environment
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          echo "Kubernetes context:"
+          kubectl config current-context
+
+          echo
+          echo "Namespace:"
+          kubectl get namespace heurislink
+
+          echo
+          echo "Current deployment:"
+          kubectl get deployment heurislink -n heurislink
+
+          echo
+          echo "Docker:"
+          docker version --format '{{.Server.Version}}'
+
+      - name: Set image name
+        id: image
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          IMAGE_NAME="ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/heurislink"
+
+          echo "name=$IMAGE_NAME" >> "$GITHUB_OUTPUT"
+          echo "Image: $IMAGE_NAME"
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pull published image
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          docker pull \
+            "${{ steps.image.outputs.name }}:${{ steps.revision.outputs.sha }}"
+
+      - name: Resolve immutable image digest
+        id: digest
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          IMAGE_REF="$(
+            docker image inspect \
+              "${{ steps.image.outputs.name }}:${{ steps.revision.outputs.sha }}" \
+              --format '{{index .RepoDigests 0}}'
+          )"
+
+          if [ -z "$IMAGE_REF" ]; then
+            echo "Could not resolve image digest."
+            exit 1
+          fi
+
+          echo "ref=$IMAGE_REF" >> "$GITHUB_OUTPUT"
+          echo "Immutable image: $IMAGE_REF"
+
+      - name: Deploy application
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          PREVIOUS_IMAGE="$(
+            kubectl get deployment heurislink \
+              -n heurislink \
+              -o jsonpath='{.spec.template.spec.containers[0].image}'
+          )"
+
+          NEW_IMAGE="${{ steps.digest.outputs.ref }}"
+
+          echo "Previous image: $PREVIOUS_IMAGE"
+          echo "New image:      $NEW_IMAGE"
+
+          kubectl set image \
+            deployment/heurislink \
+            heurislink="$NEW_IMAGE" \
+            -n heurislink
+
+          if ! kubectl rollout status \
+            deployment/heurislink \
+            -n heurislink \
+            --timeout=300s
+          then
+            echo "Deployment failed. Rolling back to:"
+            echo "$PREVIOUS_IMAGE"
+
+            kubectl set image \
+              deployment/heurislink \
+              heurislink="$PREVIOUS_IMAGE" \
+              -n heurislink
+
+            kubectl rollout status \
+              deployment/heurislink \
+              -n heurislink \
+              --timeout=300s || true
+
+            exit 1
+          fi
+
+      - name: Verify deployment
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          kubectl get deployment heurislink -n heurislink
+
+          echo
+          kubectl get pods \
+            -n heurislink \
+            -l app=heurislink
+
+          echo
+          echo "Deployed image:"
+
+          kubectl get deployment heurislink \
+            -n heurislink \
+            -o jsonpath='{.spec.template.spec.containers[0].image}'
+
+          echo
+
+      - name: Write deployment summary
+        shell: bash
+        run: |
+          {
+            echo "## Heurislink Deployment"
+            echo
+            echo "- Revision: \`${{ steps.revision.outputs.sha }}\`"
+            echo "- Image: \`${{ steps.digest.outputs.ref }}\`"
+            echo "- Namespace: \`heurislink\`"
+            echo "- Deployment: \`heurislink\`"
+          } >> "$GITHUB_STEP_SUMMARY"
