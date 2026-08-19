@@ -3,32 +3,33 @@ kind: ConfigMap
 metadata:
   name: grafana-datasources
   namespace: heurislink
+
 data:
   datasource.yaml: |
     apiVersion: 1
 
     datasources:
-    - name: Prometheus
-      uid: prometheus
-      type: prometheus
-      access: proxy
-      url: http://prometheus:9090
-      isDefault: true
-      editable: false
+      - name: Prometheus
+        uid: prometheus
+        type: prometheus
+        access: proxy
+        url: http://prometheus:9090
+        isDefault: true
+        editable: false
 
-    - name: Loki
-      uid: loki
-      type: loki
-      access: proxy
-      url: http://loki:3100
-      editable: false
-        
-    - name: Tempo
-      uid: tempo
-      type: tempo
-      access: proxy
-      url: http://tempo:3200
-      editable: false
+      - name: Loki
+        uid: loki
+        type: loki
+        access: proxy
+        url: http://loki:3100
+        editable: false
+
+      - name: Tempo
+        uid: tempo
+        type: tempo
+        access: proxy
+        url: http://tempo:3200
+        editable: false
 
 ---
 apiVersion: v1
@@ -36,6 +37,7 @@ kind: ConfigMap
 metadata:
   name: grafana-dashboard-provider
   namespace: heurislink
+
 data:
   dashboard-provider.yaml: |
     apiVersion: 1
@@ -57,8 +59,12 @@ kind: Deployment
 metadata:
   name: grafana
   namespace: heurislink
+
 spec:
   replicas: 1
+
+  strategy:
+    type: Recreate
 
   selector:
     matchLabels:
@@ -70,6 +76,10 @@ spec:
         app: grafana
 
     spec:
+      securityContext:
+        fsGroup: 472
+        fsGroupChangePolicy: OnRootMismatch
+
       containers:
         - name: grafana
           image: grafana/grafana:latest
@@ -144,6 +154,9 @@ spec:
             - name: alerting
               mountPath: /etc/grafana/provisioning/alerting
 
+            - name: grafana-data
+              mountPath: /var/lib/grafana
+
       volumes:
         - name: datasources
           configMap:
@@ -161,6 +174,10 @@ spec:
           configMap:
             name: grafana-alerting
 
+        - name: grafana-data
+          persistentVolumeClaim:
+            claimName: grafana-data
+
 ---
 apiVersion: v1
 kind: Service
@@ -169,6 +186,7 @@ metadata:
   namespace: heurislink
   labels:
     app: grafana
+
 spec:
   type: ClusterIP
 
