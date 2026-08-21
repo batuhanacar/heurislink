@@ -36,7 +36,7 @@ jobs:
       - Linux
       - X64
 
-    timeout-minutes: 15
+    timeout-minutes: 25
 
     steps:
       - name: Determine revision
@@ -163,9 +163,32 @@ jobs:
           if ! kubectl rollout status \
             deployment/heurislink \
             -n heurislink \
-            --timeout=300s
+            --timeout=600s
           then
+            echo
             echo "Deployment failed."
+
+            echo
+            echo "Deployment status:"
+            kubectl get deployment heurislink \
+              -n heurislink \
+              -o wide || true
+
+            echo
+            echo "Pod status:"
+            kubectl get pods \
+              -n heurislink \
+              -l app=heurislink \
+              -o wide || true
+
+            echo
+            echo "Recent Kubernetes events:"
+            kubectl get events \
+              -n heurislink \
+              --sort-by=.lastTimestamp \
+              | tail -30 || true
+
+            echo
             echo "Rolling back to:"
             echo "$PREVIOUS_IMAGE"
 
@@ -174,10 +197,13 @@ jobs:
               heurislink="$PREVIOUS_IMAGE" \
               -n heurislink
 
+            echo
+            echo "Waiting for rollback to complete..."
+
             kubectl rollout status \
               deployment/heurislink \
               -n heurislink \
-              --timeout=300s || true
+              --timeout=600s || true
 
             exit 1
           fi
@@ -194,16 +220,32 @@ jobs:
           echo "Pods:"
           kubectl get pods \
             -n heurislink \
-            -l app=heurislink
+            -l app=heurislink \
+            -o wide
 
           echo
           echo "Deployed image:"
 
-          kubectl get deployment heurislink \
-            -n heurislink \
-            -o jsonpath='{.spec.template.spec.containers[0].image}'
+          DEPLOYED_IMAGE="$(
+            kubectl get deployment heurislink \
+              -n heurislink \
+              -o jsonpath='{.spec.template.spec.containers[0].image}'
+          )"
+
+          echo "$DEPLOYED_IMAGE"
+
+          EXPECTED_IMAGE="${{ steps.digest.outputs.ref }}"
+
+          if [ "$DEPLOYED_IMAGE" != "$EXPECTED_IMAGE" ]; then
+            echo
+            echo "Deployment verification failed."
+            echo "Expected: $EXPECTED_IMAGE"
+            echo "Actual:   $DEPLOYED_IMAGE"
+            exit 1
+          fi
 
           echo
+          echo "Deployment verification successful."
 
       - name: Write deployment summary
         shell: bash
@@ -215,4 +257,5 @@ jobs:
             echo "- Image: \`${{ steps.digest.outputs.ref }}\`"
             echo "- Namespace: \`heurislink\`"
             echo "- Deployment: \`heurislink\`"
+            echo "- Status: ✅ Successful"
           } >> "$GITHUB_STEP_SUMMARY"
