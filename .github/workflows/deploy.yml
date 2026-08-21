@@ -83,6 +83,14 @@ jobs:
           echo "Docker:"
           docker version --format '{{.Server.Version}}'
 
+          echo
+          echo "Docker Buildx:"
+          docker buildx version
+
+          echo
+          echo "jq:"
+          jq --version
+
       - name: Set image name
         id: image
         shell: bash
@@ -101,33 +109,35 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Pull published image
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          docker pull \
-            "${{ steps.image.outputs.name }}:${{ steps.revision.outputs.sha }}"
-
       - name: Resolve immutable image digest
         id: digest
         shell: bash
         run: |
           set -euo pipefail
 
-          IMAGE_REF="$(
-            docker image inspect \
-              "${{ steps.image.outputs.name }}:${{ steps.revision.outputs.sha }}" \
-              --format '{{index .RepoDigests 0}}'
+          IMAGE_TAG="${{ steps.image.outputs.name }}:${{ steps.revision.outputs.sha }}"
+
+          echo "Resolving digest for:"
+          echo "$IMAGE_TAG"
+
+          DIGEST="$(
+            docker buildx imagetools inspect \
+              "$IMAGE_TAG" \
+              --format '{{json .Manifest}}' |
+            jq -r '.digest'
           )"
 
-          if [ -z "$IMAGE_REF" ]; then
+          if [ -z "$DIGEST" ] || [ "$DIGEST" = "null" ]; then
             echo "Could not resolve image digest."
             exit 1
           fi
 
+          IMAGE_REF="${{ steps.image.outputs.name }}@$DIGEST"
+
           echo "ref=$IMAGE_REF" >> "$GITHUB_OUTPUT"
-          echo "Immutable image: $IMAGE_REF"
+
+          echo "Resolved immutable image:"
+          echo "$IMAGE_REF"
 
       - name: Deploy application
         shell: bash
@@ -155,7 +165,8 @@ jobs:
             -n heurislink \
             --timeout=300s
           then
-            echo "Deployment failed. Rolling back to:"
+            echo "Deployment failed."
+            echo "Rolling back to:"
             echo "$PREVIOUS_IMAGE"
 
             kubectl set image \
@@ -176,9 +187,11 @@ jobs:
         run: |
           set -euo pipefail
 
+          echo "Deployment:"
           kubectl get deployment heurislink -n heurislink
 
           echo
+          echo "Pods:"
           kubectl get pods \
             -n heurislink \
             -l app=heurislink
