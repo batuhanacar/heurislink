@@ -4,7 +4,8 @@ info:
   version: 1.0.0
   description: REST API for creating, redirecting, and managing short URLs.
   license:
-    name: Proprietary
+    name: MIT License
+    url: https://opensource.org/license/mit
 security: []
 servers:
   - url: http://localhost:8080

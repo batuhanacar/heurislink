@@ -145,4 +145,4 @@ load-tests                      k6 scenarios
 
 ## License
 
-No license file is currently published. Treat this repository as private unless a separate license agreement applies.
+This project is licensed under the [MIT License](LICENSE). Copyright (c) 2026 Batuhan Acar.
