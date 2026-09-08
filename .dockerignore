@@ -2,6 +2,12 @@
 build
 .git
 .gitignore
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.crt
 
 .idea
 *.iml

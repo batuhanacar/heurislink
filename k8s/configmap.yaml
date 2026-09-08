@@ -14,7 +14,7 @@ data:
 
   OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: "http://tempo:4318/v1/traces"
 
-  APP_BASE_URL: "http://127.0.0.1:32771"
+  APP_BASE_URL: "https://your-domain.example"
 
   APP_RATELIMIT_MAXREQUESTS: "10"
   APP_RATELIMIT_WINDOWSECONDS: "60"
